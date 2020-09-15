@@ -1,0 +1,69 @@
+#!/bin/sh
+# if the given directory is valid
+if [ -d "$1" ]
+then
+# for each file that is in put in the parameter/or for each file in the directory in the parameter
+  cd $1
+  for i in *
+  # loop through the file(s) and make folders based on image date if the directory given is valid
+  do
+    # assume this file has a valid filetype
+    invalid=0
+    # get the first 2 words of the filetype
+    filetype=$(echo `file -b "$i" | cut -d ' ' -f 1-2`)
+    # if the filetype doesnt matches that of a jpg image, set invalid to 1 and send out an error message
+    if [ "$filetype" != "JPEG image" ]
+    then
+      invalid=1
+      >&2 echo $i is not a valid image file.
+    fi
+    # get the entire time info
+    info=$(exiftime -tg $i)
+    # get the date, the 3rd field in the entire info
+    date=$(echo $info | cut -d ' ' -f 3)
+    len=$(echo -n $date | wc -m)
+    # assume the exif is valid
+    invalidExif=0
+    # if it isnt valid, output error message and set invalidity to 1
+    if [ $len -ne 10 ]
+    then
+      >&2 echo Exif data is not found for $i
+      invalidExif=1
+    fi
+    # if the image and exif output is valid
+    if [ $invalid -eq 0 ] && [ $invalidExif -eq 0 ]
+    then
+      # get the year, the 1st field in the date
+      year=$(echo $date | cut -d ':' -f 1)
+      # get the month, the 2nd field in the date
+      month=$(echo $date | cut -d ':' -f 2)
+      # if there is already a folder with the same year
+      if [ -d "$year" ]
+      then
+        # change directory into the year
+        cd $year
+      # otherwise make a new folder with the year and change into it
+      else
+        mkdir $year
+        cd $year
+      fi
+      # if there is already a folder with the same month in the same year
+      if [ -d "$month" ]
+      then
+        # move back to the root folder move this file into the month folder
+	cd ..
+        mv "$i" $year/$month
+      else
+        # otherwise make a new month folder and put the image into it
+	# make a month directory and go back to the root folder to move it
+        mkdir $month
+	cd ..
+        mv "$i" $year/$month
+      fi
+    fi
+  done
+# if the input is not a valid directory, output error message and exit
+else
+  >&2 echo "$1 is not a valid directory"
+  exit 1
+fi

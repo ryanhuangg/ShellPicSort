@@ -1,0 +1,96 @@
+#!/bin/sh
+
+# get the num of columns in the table from input
+columns=$1
+# if there are less than 1 columns, display error message and quit
+if [ $columns -lt 1 ]
+then
+  >&2 echo "The columns inserted is 0 or less. It should be 1 or more."
+  exit 1
+fi
+# check if number of parameters is correct
+if [ $# -lt 2 ]
+then
+  >&2 echo "You have entered less than 2 parameters. It should be at least 2"
+  exit 1
+fi
+# shift down 1 parameter
+shift
+# get the parent directory from input
+parent=$1
+# change directory into the parent
+cd $parent
+# output the header that's the same for every input
+echo "<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">"
+echo "<html>"
+echo "  <head>"
+echo "    <title>Pictures</title>"
+echo "  </head>"
+echo "<body>"
+echo "  <h1>Pictures</h1>"
+# setup column count to be 0
+columnCount=0
+errorCount=0
+# for all directories in the parent, loop through to set up the table
+for dir in *
+do
+  # get the year for this directory
+  year=$dir
+  # display year header
+  echo "<h2>$dir</h2>"
+  echo "<table>"
+  # change directory into the year directory
+  cd $dir
+  # for every month directory in the year
+  for innerdir in *
+  do
+    # change directory into the month
+    cd $innerdir
+    # get the month for this directory
+    month=$innerdir
+    # display table row
+    echo "  <tr>"
+    # for every file in the directory
+    for files in *
+    do
+      # if the current file is in the correct format
+      extension=$(echo `file -b $files` | cut -d ' ' -f 1-3)
+      if [ "$extension" = "JPEG image data," ]
+      then
+        # if current column exceeds column limit
+        if [ $columnCount -eq $columns ]
+        then
+          # add table footer and header
+	  echo "  </tr>"
+	  echo "  <tr>"
+          # reset columncount
+	  columnCount=0
+          # output the file's name
+          echo "      <td><img src=\"$year/$month":"$files\" height=100></td>"
+        # if the curr column is within the limit
+        else
+	  # output the file's name
+          echo "      <td><img src=\"$year/$month":"$files\" height=100></td>"
+        fi
+        # increment clumn count
+        columnCount=$((columnCount+1))
+      else
+        errorCount=$((errorCount+1))
+      fi
+    done
+    # add table row footer
+    echo "  </tr>"
+    # go back to the year directory
+    cd ..
+  done
+  # go back to the parent directory
+  cd ..
+  echo "</table>"
+done
+echo "</body>"
+echo "</html>"
+# if the error count is higher, display how many errors there were
+if [ $errorCount -gt 0 ]
+then
+  >&2 echo "You have $errorCount files in the provided directory that is not in the correct format."
+fi
